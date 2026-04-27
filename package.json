@@ -1,7 +1,7 @@
 {
   "name": "seedance-video-studio",
-  "version": "1.0.0",
-  "description": "Generate 15s 16:9 videos with sound using Seedance 2.0 via useapi.net",
+  "version": "2.0.0",
+  "description": "Generate chained 15s 16:9 video clips with sound using Seedance 2.0 via useapi.net",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,8 +11,10 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "archiver": "^7.0.1",
     "express": "^4.21.2",
+    "fluent-ffmpeg": "^2.1.3",
     "multer": "^1.4.5-lts.1"
   }
 }
