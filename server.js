@@ -96,21 +96,40 @@ function extractTask(payload) {
   return null;
 }
 
-function isVideoUrl(s) {
-  return typeof s === 'string' && /^https?:\/\/.+\.(mp4|m3u8|mov|webm)(\?|#|$)/i.test(s);
+function looksLikeUrl(s) {
+  return typeof s === 'string' && /^https?:\/\/\S+/i.test(s);
+}
+function looksLikeImage(s) {
+  return typeof s === 'string' && /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(s);
 }
 function extractVideoUrl(task) {
   if (!task) return null;
-  const arts = task.artifacts || [];
-  for (const a of arts) {
-    if (isVideoUrl(a?.url)) return a.url;
-    if (Array.isArray(a?.videoVersions) && isVideoUrl(a.videoVersions[0]?.url)) return a.videoVersions[0].url;
-    if (Array.isArray(a?.imageVersions) && isVideoUrl(a.imageVersions[0]?.url)) return a.imageVersions[0].url;
+
+  // 1) Direct fields seen across Runway / useapi shapes.
+  const directKeys = ['videoUrl', 'videoUri', 'video', 'output', 'outputUrl', 'mp4', 'src'];
+  for (const k of directKeys) {
+    if (looksLikeUrl(task[k]) && !looksLikeImage(task[k])) return task[k];
   }
+
+  // 2) Artifacts array — strongly preferred for Runway video tasks.
+  const arts = Array.isArray(task.artifacts) ? task.artifacts : [];
+  for (const a of arts) {
+    if (!a) continue;
+    if (looksLikeUrl(a.url) && !looksLikeImage(a.url)) return a.url;
+    for (const k of directKeys) {
+      if (looksLikeUrl(a[k]) && !looksLikeImage(a[k])) return a[k];
+    }
+    if (Array.isArray(a.videoVersions) && looksLikeUrl(a.videoVersions[0]?.url)) return a.videoVersions[0].url;
+  }
+
+  // 3) Deep fallback — first non-image http(s) URL anywhere in the payload.
   let found = null;
   const visit = (node) => {
-    if (found || !node) return;
-    if (typeof node === 'string') { if (isVideoUrl(node)) found = node; return; }
+    if (found || node == null) return;
+    if (typeof node === 'string') {
+      if (looksLikeUrl(node) && !looksLikeImage(node)) found = node;
+      return;
+    }
     if (Array.isArray(node)) { for (const v of node) visit(v); return; }
     if (typeof node === 'object') { for (const k of Object.keys(node)) visit(node[k]); }
   };
@@ -150,6 +169,9 @@ app.get('/api/status/:taskId', async (req, res) => {
     const status = task.status || 'PENDING';
     const videoUrl = extractVideoUrl(task);
     console.log(`[status] task=${req.params.taskId} status=${status} progress=${task.progressRatio ?? '-'} video=${videoUrl ? 'yes' : 'no'}`);
+    if (status === 'SUCCEEDED' && !videoUrl) {
+      console.warn('[status] SUCCEEDED but no video URL extracted. Raw task keys:', Object.keys(task), 'artifacts:', JSON.stringify(task.artifacts || null).slice(0, 1500));
+    }
     res.json({
       taskId: task.taskId || req.params.taskId,
       status,

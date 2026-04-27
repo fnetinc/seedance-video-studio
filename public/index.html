@@ -269,11 +269,21 @@
       card.className = 'card';
 
       let media;
-      if (v.status === 'SUCCEEDED' && v.videoUrl) {
+      if (v.status === 'SUCCEEDED') {
         media = document.createElement('video');
         media.controls = true;
         media.preload = 'metadata';
         media.src = `/api/download/${encodeURIComponent(v.taskId)}`;
+        media.onerror = () => {
+          const fallback = document.createElement('div');
+          fallback.className = 'placeholder';
+          const lbl = document.createElement('div'); lbl.className = 'label';
+          lbl.textContent = 'Video URL not yet available';
+          const sub = document.createElement('div'); sub.className = 'sub';
+          sub.textContent = 'Server reports SUCCEEDED but the video file isn\'t reachable yet. Visit /api/debug/' + v.taskId + ' to inspect.';
+          fallback.appendChild(lbl); fallback.appendChild(sub);
+          media.replaceWith(fallback);
+        };
       } else if (v.status === 'FAILED') {
         media = document.createElement('div');
         media.className = 'placeholder';
