@@ -193,6 +193,12 @@
     const r = s % 60;
     return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
   }
+  function pollText(v) {
+    const elapsed = `Elapsed ${fmtElapsed(Date.now() - v.createdAt)}`;
+    const checks = v.pollCount ? ` · Checked ${v.pollCount}×` : '';
+    const last = v.lastPollAt ? ` · Last check ${Math.max(0, Math.round((Date.now() - v.lastPollAt) / 1000))}s ago` : '';
+    return `${elapsed}${checks}${last}`;
+  }
   function statusLabel(status) {
     switch (status) {
       case 'PENDING': return 'Queued';
@@ -218,7 +224,9 @@
     document.querySelectorAll('.timer[data-created]').forEach(el => {
       const created = Number(el.dataset.created);
       if (!Number.isFinite(created)) return;
-      el.textContent = `Elapsed ${fmtElapsed(Date.now() - created)}`;
+      const lastPoll = Number(el.dataset.lastPoll || 0);
+      const pollCount = Number(el.dataset.pollCount || 0);
+      el.textContent = pollText({ createdAt: created, lastPollAt: lastPoll || null, pollCount });
     });
   }, 1000);
 
@@ -234,6 +242,8 @@
         v.progressRatio = json.progressRatio;
         v.progressText = json.progressText;
         v.estimatedTimeToStartSeconds = json.estimatedTimeToStartSeconds;
+        v.lastPollAt = Date.now();
+        v.pollCount = (v.pollCount || 0) + 1;
         if (json.videoUrl) v.videoUrl = `/api/download/${encodeURIComponent(taskId)}?inline=1`;
         if (json.error) v.error = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
         saveStore();
@@ -299,7 +309,9 @@
         const timer = document.createElement('div');
         timer.className = 'timer';
         timer.dataset.created = String(v.createdAt);
-        timer.textContent = `Elapsed ${fmtElapsed(Date.now() - v.createdAt)}`;
+        timer.dataset.lastPoll = String(v.lastPollAt || 0);
+        timer.dataset.pollCount = String(v.pollCount || 0);
+        timer.textContent = pollText(v);
         media.appendChild(timer);
       }
       card.appendChild(media);

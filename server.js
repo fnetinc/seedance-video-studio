@@ -96,14 +96,26 @@ function extractTask(payload) {
   return null;
 }
 
+function isVideoUrl(s) {
+  return typeof s === 'string' && /^https?:\/\/.+\.(mp4|m3u8|mov|webm)(\?|#|$)/i.test(s);
+}
 function extractVideoUrl(task) {
   if (!task) return null;
   const arts = task.artifacts || [];
   for (const a of arts) {
-    if (a?.url) return a.url;
-    if (Array.isArray(a?.imageVersions) && a.imageVersions[0]?.url) return a.imageVersions[0].url;
+    if (isVideoUrl(a?.url)) return a.url;
+    if (Array.isArray(a?.videoVersions) && isVideoUrl(a.videoVersions[0]?.url)) return a.videoVersions[0].url;
+    if (Array.isArray(a?.imageVersions) && isVideoUrl(a.imageVersions[0]?.url)) return a.imageVersions[0].url;
   }
-  return null;
+  let found = null;
+  const visit = (node) => {
+    if (found || !node) return;
+    if (typeof node === 'string') { if (isVideoUrl(node)) found = node; return; }
+    if (Array.isArray(node)) { for (const v of node) visit(v); return; }
+    if (typeof node === 'object') { for (const k of Object.keys(node)) visit(node[k]); }
+  };
+  visit(task);
+  return found;
 }
 
 app.post('/api/generate', upload.single('image'), async (req, res) => {
@@ -136,7 +148,8 @@ app.get('/api/status/:taskId', async (req, res) => {
     const payload = await getTask(req.params.taskId);
     const task = extractTask(payload) || {};
     const status = task.status || 'PENDING';
-    const videoUrl = status === 'SUCCEEDED' ? extractVideoUrl(task) : null;
+    const videoUrl = extractVideoUrl(task);
+    console.log(`[status] task=${req.params.taskId} status=${status} progress=${task.progressRatio ?? '-'} video=${videoUrl ? 'yes' : 'no'}`);
     res.json({
       taskId: task.taskId || req.params.taskId,
       status,
@@ -149,6 +162,16 @@ app.get('/api/status/:taskId', async (req, res) => {
   } catch (err) {
     console.error('[status]', err);
     res.status(500).json({ error: err.message || 'Status fetch failed.' });
+  }
+});
+
+app.get('/api/debug/:taskId', async (req, res) => {
+  try {
+    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
+    const payload = await getTask(req.params.taskId);
+    res.json({ raw: payload, extractedVideoUrl: extractVideoUrl(extractTask(payload)) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
