@@ -47,7 +47,16 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); }
   .card video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
-  .card .placeholder { width: 100%; aspect-ratio: 16/9; background: var(--panel-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; padding: 12px; text-align: center; border-bottom: 1px solid var(--border); }
+  .card .placeholder { width: 100%; aspect-ratio: 16/9; background: var(--panel-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; flex-direction: column; gap: 10px; padding: 16px; text-align: center; border-bottom: 1px solid var(--border); }
+  .card .placeholder .label { font-weight: 600; color: var(--text); font-size: 14px; letter-spacing: 0.02em; }
+  .card .placeholder .sub { font-size: 12px; color: var(--muted); }
+  .card .placeholder .timer { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+  .progressbar { width: 80%; max-width: 240px; height: 6px; background: rgba(15,23,42,0.08); border-radius: 999px; overflow: hidden; position: relative; }
+  .progressbar > .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width 0.4s ease; }
+  .progressbar.indeterminate > .fill { width: 35% !important; animation: slide 1.6s ease-in-out infinite; }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(285%); } }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; vertical-align: middle; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
   .card .body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
   .card .prompt { font-size: 13px; color: var(--text); line-height: 1.4; max-height: 4.2em; overflow: hidden; }
   .card .meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
@@ -178,6 +187,41 @@
     }
   });
 
+  function fmtElapsed(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+  }
+  function statusLabel(status) {
+    switch (status) {
+      case 'PENDING': return 'Queued';
+      case 'THROTTLED': return 'Waiting in queue';
+      case 'RUNNING': return 'Generating video';
+      case 'SUCCEEDED': return 'Ready';
+      case 'FAILED': return 'Failed';
+      default: return status || 'Working';
+    }
+  }
+  function subText(v) {
+    if (v.status === 'THROTTLED' && typeof v.estimatedTimeToStartSeconds === 'number') {
+      return `Starts in ~${Math.max(1, Math.round(v.estimatedTimeToStartSeconds))}s · Seedance can take up to 5 min`;
+    }
+    if (typeof v.progressRatio === 'number' && v.progressRatio > 0) {
+      return `${Math.round(v.progressRatio * 100)}%${v.progressText ? ' · ' + v.progressText : ''}`;
+    }
+    if (v.progressText) return v.progressText;
+    return 'Seedance can take up to 5 min · keep this tab open';
+  }
+
+  setInterval(() => {
+    document.querySelectorAll('.timer[data-created]').forEach(el => {
+      const created = Number(el.dataset.created);
+      if (!Number.isFinite(created)) return;
+      el.textContent = `Elapsed ${fmtElapsed(Date.now() - created)}`;
+    });
+  }, 1000);
+
   async function pollTask(taskId) {
     const v = videos.get(taskId);
     if (!v) return;
@@ -189,6 +233,7 @@
         v.status = json.status || v.status;
         v.progressRatio = json.progressRatio;
         v.progressText = json.progressText;
+        v.estimatedTimeToStartSeconds = json.estimatedTimeToStartSeconds;
         if (json.videoUrl) v.videoUrl = `/api/download/${encodeURIComponent(taskId)}?inline=1`;
         if (json.error) v.error = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
         saveStore();
@@ -226,12 +271,36 @@
       } else {
         media = document.createElement('div');
         media.className = 'placeholder';
-        const sp = document.createElement('div'); sp.className = 'spinner';
-        media.appendChild(sp);
-        const txt = document.createElement('div');
-        const pct = typeof v.progressRatio === 'number' ? ` · ${Math.round(v.progressRatio * 100)}%` : '';
-        txt.textContent = `${v.status || 'PENDING'}${pct}`;
-        media.appendChild(txt);
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        const dot = document.createElement('span'); dot.className = 'pulse-dot';
+        label.appendChild(dot);
+        label.appendChild(document.createTextNode(statusLabel(v.status)));
+        media.appendChild(label);
+
+        const bar = document.createElement('div');
+        bar.className = 'progressbar';
+        const fill = document.createElement('div');
+        fill.className = 'fill';
+        if (typeof v.progressRatio === 'number' && v.progressRatio > 0) {
+          fill.style.width = `${Math.max(3, Math.round(v.progressRatio * 100))}%`;
+        } else {
+          bar.classList.add('indeterminate');
+        }
+        bar.appendChild(fill);
+        media.appendChild(bar);
+
+        const sub = document.createElement('div');
+        sub.className = 'sub';
+        sub.textContent = subText(v);
+        media.appendChild(sub);
+
+        const timer = document.createElement('div');
+        timer.className = 'timer';
+        timer.dataset.created = String(v.createdAt);
+        timer.textContent = `Elapsed ${fmtElapsed(Date.now() - v.createdAt)}`;
+        media.appendChild(timer);
       }
       card.appendChild(media);
 

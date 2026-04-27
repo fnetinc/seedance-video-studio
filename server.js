@@ -57,6 +57,7 @@ async function createSeedanceVideo({ assetId, prompt }) {
     resolution: '720p',
     audio: true,
     imageAssetId1: assetId,
+    exploreMode: true,
   };
   if (RUNWAY_EMAIL) body.email = RUNWAY_EMAIL;
   const res = await fetch(`${USEAPI_BASE}/videos/create`, {
@@ -141,6 +142,7 @@ app.get('/api/status/:taskId', async (req, res) => {
       status,
       progressRatio: task.progressRatio ?? null,
       progressText: task.progressText ?? null,
+      estimatedTimeToStartSeconds: task.estimatedTimeToStartSeconds ?? null,
       error: task.error || null,
       videoUrl,
     });
