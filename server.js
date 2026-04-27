@@ -89,7 +89,7 @@ async function uploadAsset(buffer, mimetype, name) {
   return json;
 }
 
-async function createVideo(assetId, prompt) {
+async function createVideo(assetId, prompt, mode = 'unlimited') {
   const body = {
     model: 'seedance-2',
     text_prompt: prompt,
@@ -98,8 +98,10 @@ async function createVideo(assetId, prompt) {
     resolution: '720p',
     audio: true,
     imageAssetId1: assetId,
-    exploreMode: true,
   };
+  // mode: 'unlimited' uses exploreMode (no credit cost, requires unlimited Runway plan)
+  // mode: 'credits' omits exploreMode so Runway charges credits as normal
+  if (mode === 'unlimited') body.exploreMode = true;
   if (RUNWAY_EMAIL) body.email = RUNWAY_EMAIL;
   const { ok, json } = await apiCall('POST', `${USEAPI_BASE}/videos/create`, {
     headers: { 'Content-Type': 'application/json' },
@@ -189,12 +191,13 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
     const assetId = asset.assetId || asset.id;
     if (!assetId) return res.status(502).json({ error: 'No assetId returned.' });
 
-    const created = await createVideo(assetId, prompt);
+    const mode = (req.body.mode === 'credits') ? 'credits' : 'unlimited';
+    const created = await createVideo(assetId, prompt, mode);
     const task = getTaskObj(created);
     const taskId = getCompositeTaskId(created) || task?.taskId || task?.id;
     if (!taskId) return res.status(502).json({ error: 'No taskId returned.' });
 
-    res.json({ taskId, status: task?.status || 'PENDING', prompt });
+    res.json({ taskId, status: task?.status || 'PENDING', prompt, mode });
   } catch (err) {
     console.error('[generate]', err);
     res.status(500).json({ error: err.message });
@@ -257,6 +260,7 @@ const PER_CLIP_TIMEOUT_MS = 50 * 60 * 1000; // 50 min ceiling per clip
 function chainSnapshot(c) {
   return {
     id: c.id,
+    mode: c.mode,
     totalPrompts: c.prompts.length,
     prompts: c.prompts,
     currentIndex: c.currentIndex,
@@ -299,7 +303,7 @@ async function runChain(chainId) {
 
       // Create video
       c.currentStatus = 'CREATING_VIDEO';
-      const created = await createVideo(assetId, c.prompts[i]);
+      const created = await createVideo(assetId, c.prompts[i], c.mode);
       const task = getTaskObj(created);
       const taskId = getCompositeTaskId(created) || task?.taskId || task?.id;
       if (!taskId) throw new Error(`Clip ${i + 1}: no taskId returned`);
@@ -377,10 +381,13 @@ app.post('/api/chain/start', upload.single('image'), async (req, res) => {
     if (!prompts.length) return res.status(400).json({ error: 'No non-empty prompts.' });
     if (prompts.length > 100) return res.status(400).json({ error: 'Max 100 prompts per chain.' });
 
+    const mode = (req.body.mode === 'credits') ? 'credits' : 'unlimited';
+
     const chainId = crypto.randomBytes(8).toString('hex');
     const chain = {
       id: chainId,
       prompts,
+      mode,
       currentIndex: 0,
       currentStatus: 'STARTING',
       currentTaskId: null,
@@ -397,7 +404,7 @@ app.post('/api/chain/start', upload.single('image'), async (req, res) => {
     };
     chains.set(chainId, chain);
     runChain(chainId);
-    res.json({ chainId, totalPrompts: prompts.length });
+    res.json({ chainId, totalPrompts: prompts.length, mode });
   } catch (err) {
     console.error('[chain/start]', err);
     res.status(500).json({ error: err.message });

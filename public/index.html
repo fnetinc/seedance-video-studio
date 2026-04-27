@@ -75,6 +75,17 @@
   .err-msg { color: var(--err); font-size: 12px; margin-top: 8px; }
   small.hint { color: var(--muted); font-size: 11px; }
 
+  .mode-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .mode-opt { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: var(--panel-2); margin: 0; transition: border-color 0.15s, background 0.15s; }
+  .mode-opt:has(input:checked) { border-color: var(--accent); background: rgba(37,99,235,0.06); }
+  .mode-opt input { margin: 3px 0 0; width: auto; }
+  .mode-opt span { display: flex; flex-direction: column; gap: 2px; }
+  .mode-opt strong { font-size: 13px; color: var(--text); font-weight: 600; }
+  .mode-opt small { font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .mode-pill { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .mode-pill.unlimited { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.35); color: var(--accent); }
+  .mode-pill.credits { background: rgba(180,83,9,0.08); border-color: rgba(180,83,9,0.35); color: var(--warn); }
+
   /* Login overlay */
   #loginOverlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
   #loginOverlay.hidden { display: none; }
@@ -120,6 +131,18 @@
       <label for="prompts">Prompts (one per line, in order)</label>
       <textarea id="prompts" name="prompts" placeholder="Wide shot of the town at sunrise...&#10;Camera slowly pushes in on the saloon...&#10;A train whistle echoes as steam fills the frame..." required></textarea>
       <small class="hint">Each line becomes a 15s clip. The last frame of clip N is used as the reference for clip N+1.</small>
+
+      <label>Generation mode</label>
+      <div class="mode-toggle">
+        <label class="mode-opt">
+          <input type="radio" name="mode" value="unlimited" checked />
+          <span><strong>Unlimited</strong><small>No credits used. Requires Unlimited Runway plan.</small></span>
+        </label>
+        <label class="mode-opt">
+          <input type="radio" name="mode" value="credits" />
+          <span><strong>Credits</strong><small>Standard mode. Burns Runway credits per clip.</small></span>
+        </label>
+      </div>
 
       <button id="startBtn" class="btn-primary" type="submit">Start Chain</button>
       <div id="chainErr" class="err-msg" hidden></div>
@@ -250,9 +273,11 @@
     startBtn.disabled = true;
     startBtn.textContent = 'Starting…';
     try {
+      const mode = document.querySelector('input[name="mode"]:checked')?.value || 'unlimited';
       const fd = new FormData();
       fd.append('image', file);
       fd.append('prompts', JSON.stringify(prompts));
+      fd.append('mode', mode);
       const res = await authFetch('/api/chain/start', { method: 'POST', body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to start chain.');
@@ -344,6 +369,12 @@
       const dot = document.createElement('span'); dot.className = 'pulse-dot'; title.appendChild(dot);
     }
     title.appendChild(document.createTextNode(`${statusLabel(snap.currentStatus)} — clip ${Math.min(snap.currentIndex + 1, total)} of ${total}`));
+    if (snap.mode) {
+      const pill = document.createElement('span');
+      pill.className = `mode-pill ${snap.mode}`;
+      pill.textContent = snap.mode;
+      title.appendChild(pill);
+    }
     left.appendChild(title);
 
     const meta = document.createElement('div');
