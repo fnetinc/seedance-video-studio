@@ -164,11 +164,13 @@
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Generation failed.');
 
+      console.log('[generate] full response:', JSON.stringify(json, null, 2));
       videos.set(json.taskId, {
         taskId: json.taskId,
         prompt,
         status: json.status || 'PENDING',
         createdAt: Date.now(),
+        _debugCreate: json._debug || null,
       });
       saveStore();
       render();
@@ -238,12 +240,14 @@
       const res = await fetch(`/api/status/${encodeURIComponent(taskId)}`);
       const json = await res.json();
       if (res.ok) {
+        console.log(`[poll] taskId=${taskId} status=${json.status} video=${json.videoUrl ? 'YES' : 'no'}`, json._debug ? json : '');
         v.status = json.status || v.status;
         v.progressRatio = json.progressRatio;
         v.progressText = json.progressText;
         v.estimatedTimeToStartSeconds = json.estimatedTimeToStartSeconds;
         v.lastPollAt = Date.now();
         v.pollCount = (v.pollCount || 0) + 1;
+        v._debugStatus = json._debug || null;
         if (json.videoUrl) v.videoUrl = `/api/download/${encodeURIComponent(taskId)}?inline=1`;
         if (json.error) v.error = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
         saveStore();
@@ -358,6 +362,19 @@
         document.body.appendChild(a); a.click(); a.remove();
       };
       actions.appendChild(dl);
+
+      const dbg = document.createElement('button');
+      dbg.className = 'btn-ghost';
+      dbg.textContent = 'Debug';
+      dbg.onclick = () => {
+        const data = { taskId: v.taskId, status: v.status, createDebug: v._debugCreate, statusDebug: v._debugStatus };
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'max-height:300px;overflow:auto;background:#f1f3f9;padding:8px;border-radius:6px;font-size:11px;white-space:pre-wrap;word-break:break-all;margin:8px 0 0;border:1px solid #dfe3ec;';
+        pre.textContent = JSON.stringify(data, null, 2);
+        const existing = card.querySelector('pre');
+        if (existing) existing.remove(); else card.appendChild(pre);
+      };
+      actions.appendChild(dbg);
 
       const rm = document.createElement('button');
       rm.className = 'btn-ghost';

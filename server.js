@@ -168,13 +168,25 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
     if (!assetId) return res.status(502).json({ error: 'Asset upload returned no assetId.', detail: asset });
 
     const created = await createSeedanceVideo({ assetId, prompt });
-    console.log('[generate] create response:', JSON.stringify(created).slice(0, 2000));
+    console.log('[generate] FULL create response:', JSON.stringify(created));
     const task = extractTask(created);
-    const taskId = findCompositeTaskId(created) || task?.taskId || task?.id;
-    if (!taskId) return res.status(502).json({ error: 'Video create returned no taskId.', detail: created });
-    console.log(`[generate] using taskId=${taskId} (composite=${taskId.includes('-runwayml:')})`);
+    const compositeId = findCompositeTaskId(created);
+    const taskId = compositeId || task?.taskId || task?.id;
+    if (!taskId) return res.status(502).json({ error: 'Video create returned no taskId.', _rawResponse: created });
+    console.log(`[generate] taskId=${taskId} composite=${!!compositeId}`);
 
-    res.json({ taskId, status: task?.status || 'PENDING', prompt });
+    res.json({
+      taskId,
+      status: task?.status || 'PENDING',
+      prompt,
+      _debug: {
+        compositeIdFound: compositeId,
+        taskTaskId: task?.taskId || null,
+        taskId: task?.id || null,
+        chosenTaskId: taskId,
+        rawCreateResponse: created,
+      },
+    });
   } catch (err) {
     console.error('[generate]', err);
     res.status(500).json({ error: err.message || 'Generate failed.' });
@@ -200,10 +212,11 @@ app.get('/api/status/:taskId', async (req, res) => {
       estimatedTimeToStartSeconds: task.estimatedTimeToStartSeconds ?? null,
       error: task.error || null,
       videoUrl,
+      _debug: { rawPayload: payload, requestedTaskId: req.params.taskId },
     });
   } catch (err) {
     console.error('[status]', err);
-    res.status(500).json({ error: err.message || 'Status fetch failed.' });
+    res.status(500).json({ error: err.message || 'Status fetch failed.', requestedTaskId: req.params.taskId });
   }
 });
 
