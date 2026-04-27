@@ -16,125 +16,200 @@
     --accent-2: #7c3aed;
     --ok: #047857;
     --err: #b91c1c;
+    --warn: #b45309;
     --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 16px; }
-  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header { padding: 18px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; background: var(--panel); }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; flex: 1; }
   header .sub { color: var(--muted); font-size: 13px; }
-  main { max-width: 1200px; margin: 0 auto; padding: 28px 32px 80px; display: grid; grid-template-columns: 380px 1fr; gap: 28px; }
-  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  header .user { font-size: 12px; color: var(--muted); }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 32px 80px; display: grid; grid-template-columns: 420px 1fr; gap: 24px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
 
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
   .panel h2 { margin: 0 0 14px; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
   label { display: block; font-size: 13px; margin: 12px 0 6px; color: var(--muted); }
-  input[type=file], textarea, input[type=text] { width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; }
-  textarea { resize: vertical; min-height: 110px; }
+  input[type=file], input[type=text], input[type=password], textarea { width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; }
+  textarea { resize: vertical; min-height: 200px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; line-height: 1.5; }
   .preview { margin-top: 10px; border: 1px dashed var(--border); border-radius: 8px; padding: 8px; min-height: 120px; display: flex; align-items: center; justify-content: center; background: var(--panel-2); }
   .preview img { max-width: 100%; max-height: 180px; border-radius: 6px; }
   .preview.empty { color: var(--muted); font-size: 13px; }
 
   button { cursor: pointer; border: 0; border-radius: 8px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
   .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; width: 100%; padding: 12px; margin-top: 14px; }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-danger { background: var(--err); color: white; }
+  .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
   .toolbar .grow { flex: 1; }
+
+  .chain-overview { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .chain-overview .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .chain-overview .title { font-size: 15px; font-weight: 600; }
+  .chain-overview .meta-line { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .chain-overview .progress-track { height: 8px; background: rgba(15,23,42,0.08); border-radius: 999px; margin-top: 12px; overflow: hidden; }
+  .chain-overview .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.5s ease; border-radius: 999px; }
+  .chain-overview .err { color: var(--err); font-size: 13px; margin-top: 8px; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); }
   .card video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
   .card .placeholder { width: 100%; aspect-ratio: 16/9; background: var(--panel-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; flex-direction: column; gap: 10px; padding: 16px; text-align: center; border-bottom: 1px solid var(--border); }
-  .card .placeholder .label { font-weight: 600; color: var(--text); font-size: 14px; letter-spacing: 0.02em; }
-  .card .placeholder .sub { font-size: 12px; color: var(--muted); }
-  .card .placeholder .timer { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
-  .progressbar { width: 80%; max-width: 240px; height: 6px; background: rgba(15,23,42,0.08); border-radius: 999px; overflow: hidden; position: relative; }
-  .progressbar > .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width 0.4s ease; }
-  .progressbar.indeterminate > .fill { width: 35% !important; animation: slide 1.6s ease-in-out infinite; }
-  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(285%); } }
-  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; vertical-align: middle; animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
+  .card .placeholder .label { font-weight: 600; color: var(--text); font-size: 14px; }
   .card .body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
   .card .prompt { font-size: 13px; color: var(--text); line-height: 1.4; max-height: 4.2em; overflow: hidden; }
-  .card .meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .card .meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
   .card .actions { display: flex; gap: 6px; }
   .card .actions button { flex: 1; padding: 7px 10px; font-size: 12px; }
+  .clip-num { display: inline-block; background: var(--accent); color: white; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
 
-  .status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2); }
-  .status.PENDING, .status.RUNNING, .status.THROTTLED { color: var(--accent); border-color: rgba(37,99,235,0.35); background: rgba(37,99,235,0.08); }
-  .status.SUCCEEDED { color: var(--ok); border-color: rgba(4,120,87,0.35); background: rgba(4,120,87,0.08); }
-  .status.FAILED { color: var(--err); border-color: rgba(185,28,28,0.35); background: rgba(185,28,28,0.08); }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; vertical-align: middle; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
 
   .empty-state { color: var(--muted); padding: 60px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 12px; }
-
-  .spinner { width: 28px; height: 28px; border: 3px solid rgba(15,23,42,0.12); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
   .err-msg { color: var(--err); font-size: 12px; margin-top: 8px; }
   small.hint { color: var(--muted); font-size: 11px; }
+
+  /* Login overlay */
+  #loginOverlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  #loginOverlay.hidden { display: none; }
+  .login-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 28px; box-shadow: var(--shadow); width: 100%; max-width: 380px; }
+  .login-card h1 { margin: 0 0 4px; font-size: 22px; }
+  .login-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
 </style>
 </head>
 <body>
+
+<div id="loginOverlay">
+  <form class="login-card" id="loginForm">
+    <h1>Seedance Video Studio</h1>
+    <p class="sub">Sign in to continue.</p>
+    <label for="loginUser">Username</label>
+    <input id="loginUser" type="text" autocomplete="username" required />
+    <label for="loginPass">Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password" required />
+    <button class="btn-primary" type="submit">Sign in</button>
+    <div id="loginErr" class="err-msg" hidden></div>
+  </form>
+</div>
+
 <header>
   <h1>Seedance Video Studio</h1>
-  <span class="sub">15s · 16:9 · with sound</span>
+  <span class="sub">Chain mode · 15s clips · 16:9 · sound</span>
+  <span class="user" id="userLabel"></span>
+  <button class="btn-ghost" id="logoutBtn">Sign out</button>
 </header>
+
 <main>
   <section class="panel">
-    <h2>Generate</h2>
-    <form id="genForm">
-      <label for="image">Reference image</label>
+    <h2>New Chain</h2>
+    <form id="chainForm">
+      <label for="image">Starting reference image</label>
       <input id="image" type="file" name="image" accept="image/*" required />
       <div id="preview" class="preview empty">No image selected</div>
 
-      <label for="prompt">Prompt</label>
-      <textarea id="prompt" name="prompt" placeholder="Describe the video you want…" required></textarea>
-      <small class="hint">Reference the image with @IMG_1 in your prompt if you want to anchor it explicitly.</small>
+      <label for="prompts">Prompts (one per line, in order)</label>
+      <textarea id="prompts" name="prompts" placeholder="Wide shot of the town at sunrise...&#10;Camera slowly pushes in on the saloon...&#10;A train whistle echoes as steam fills the frame..." required></textarea>
+      <small class="hint">Each line becomes a 15s clip. The last frame of clip N is used as the reference for clip N+1.</small>
 
-      <button id="genBtn" class="btn-primary" type="submit">Generate Video</button>
-      <div id="genErr" class="err-msg" hidden></div>
+      <button id="startBtn" class="btn-primary" type="submit">Start Chain</button>
+      <div id="chainErr" class="err-msg" hidden></div>
     </form>
   </section>
 
   <section>
+    <div id="chainOverview"></div>
+
     <div class="toolbar">
-      <strong class="grow">Videos</strong>
+      <strong class="grow" id="clipsHeader">Clips</strong>
       <button id="bulkBtn" class="btn-secondary" disabled>Download all (.zip)</button>
-      <button id="clearBtn" class="btn-ghost">Clear</button>
     </div>
     <div id="grid" class="grid"></div>
-    <div id="empty" class="empty-state">No videos yet. Upload a reference image and prompt to get started.</div>
+    <div id="empty" class="empty-state">Start a chain on the left to begin generating clips.</div>
   </section>
 </main>
 
 <script>
-  const form = document.getElementById('genForm');
+  const STORE_KEY = 'seedance.chain.v2';
+  const AUTH_KEY = 'seedance.auth';
+
+  // ── Auth ─────────────────────────────────────────────────────────
+  const loginOverlay = document.getElementById('loginOverlay');
+  const loginForm = document.getElementById('loginForm');
+  const loginUser = document.getElementById('loginUser');
+  const loginPass = document.getElementById('loginPass');
+  const loginErr = document.getElementById('loginErr');
+  const userLabel = document.getElementById('userLabel');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function getAuth() { return sessionStorage.getItem(AUTH_KEY); }
+  function setAuth(creds) { sessionStorage.setItem(AUTH_KEY, creds); }
+  function clearAuth() { sessionStorage.removeItem(AUTH_KEY); }
+  function showLogin() { loginOverlay.classList.remove('hidden'); }
+  function hideLogin() { loginOverlay.classList.add('hidden'); }
+
+  async function authFetch(url, opts = {}) {
+    const creds = getAuth();
+    const headers = { ...(opts.headers || {}) };
+    if (creds) headers.Authorization = 'Basic ' + creds;
+    const res = await fetch(url, { ...opts, headers });
+    if (res.status === 401) {
+      clearAuth();
+      showLogin();
+      throw new Error('Not authenticated.');
+    }
+    return res;
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginErr.hidden = true;
+    const username = loginUser.value;
+    const password = loginPass.value;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Login failed.');
+      setAuth(btoa(`${username}:${password}`));
+      userLabel.textContent = username;
+      hideLogin();
+      loginPass.value = '';
+      bootstrap();
+    } catch (err) {
+      loginErr.textContent = err.message;
+      loginErr.hidden = false;
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    clearAuth();
+    location.reload();
+  });
+
+  // ── App state ────────────────────────────────────────────────────
+  const form = document.getElementById('chainForm');
   const imageInput = document.getElementById('image');
-  const promptInput = document.getElementById('prompt');
+  const promptsInput = document.getElementById('prompts');
   const preview = document.getElementById('preview');
-  const genBtn = document.getElementById('genBtn');
-  const genErr = document.getElementById('genErr');
+  const startBtn = document.getElementById('startBtn');
+  const chainErr = document.getElementById('chainErr');
   const grid = document.getElementById('grid');
   const empty = document.getElementById('empty');
   const bulkBtn = document.getElementById('bulkBtn');
-  const clearBtn = document.getElementById('clearBtn');
+  const overviewEl = document.getElementById('chainOverview');
+  const clipsHeader = document.getElementById('clipsHeader');
 
-  const STORE_KEY = 'seedance.videos.v1';
-  /** @type {Map<string, {taskId:string, prompt:string, status:string, videoUrl?:string, error?:string, createdAt:number}>} */
-  const videos = new Map();
-
-  function loadStore() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-      for (const v of raw) videos.set(v.taskId, v);
-    } catch {}
-  }
-  function saveStore() {
-    localStorage.setItem(STORE_KEY, JSON.stringify([...videos.values()]));
-  }
+  let activeChainId = localStorage.getItem(STORE_KEY) || null;
+  let pollHandle = null;
 
   imageInput.addEventListener('change', () => {
     const file = imageInput.files?.[0];
@@ -142,303 +217,317 @@
     const url = URL.createObjectURL(file);
     preview.className = 'preview';
     preview.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = url;
+    const img = document.createElement('img'); img.src = url;
     preview.appendChild(img);
   });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    genErr.hidden = true;
+    chainErr.hidden = true;
     const file = imageInput.files?.[0];
-    const prompt = promptInput.value.trim();
-    if (!file || !prompt) return;
+    const prompts = promptsInput.value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!file) { chainErr.textContent = 'Image required.'; chainErr.hidden = false; return; }
+    if (!prompts.length) { chainErr.textContent = 'At least one prompt required.'; chainErr.hidden = false; return; }
 
-    genBtn.disabled = true;
-    genBtn.textContent = 'Submitting…';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Starting…';
     try {
       const fd = new FormData();
       fd.append('image', file);
-      fd.append('prompt', prompt);
-      const res = await fetch('/api/generate', { method: 'POST', body: fd });
+      fd.append('prompts', JSON.stringify(prompts));
+      const res = await authFetch('/api/chain/start', { method: 'POST', body: fd });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Generation failed.');
-
-      console.log('[generate] full response:', JSON.stringify(json, null, 2));
-      videos.set(json.taskId, {
-        taskId: json.taskId,
-        prompt,
-        status: json.status || 'PENDING',
-        createdAt: Date.now(),
-        _debugCreate: json._debug || null,
-      });
-      saveStore();
-      render();
-      pollTask(json.taskId);
-
-      promptInput.value = '';
+      if (!res.ok) throw new Error(json.error || 'Failed to start chain.');
+      activeChainId = json.chainId;
+      localStorage.setItem(STORE_KEY, activeChainId);
+      promptsInput.value = '';
       imageInput.value = '';
       preview.className = 'preview empty';
       preview.textContent = 'No image selected';
+      poll();
     } catch (err) {
-      genErr.textContent = err.message;
-      genErr.hidden = false;
+      chainErr.textContent = err.message;
+      chainErr.hidden = false;
     } finally {
-      genBtn.disabled = false;
-      genBtn.textContent = 'Generate Video';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Chain';
     }
   });
 
-  function fmtElapsed(ms) {
-    const s = Math.max(0, Math.floor(ms / 1000));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
-  }
-  function pollText(v) {
-    const elapsed = `Elapsed ${fmtElapsed(Date.now() - v.createdAt)}`;
-    const checks = v.pollCount ? ` · Checked ${v.pollCount}×` : '';
-    const last = v.lastPollAt ? ` · Last check ${Math.max(0, Math.round((Date.now() - v.lastPollAt) / 1000))}s ago` : '';
-    return `${elapsed}${checks}${last}`;
-  }
-  function statusLabel(status) {
-    switch (status) {
-      case 'PENDING': return 'Queued';
-      case 'THROTTLED': return 'Waiting in queue';
-      case 'RUNNING': return 'Generating video';
-      case 'SUCCEEDED': return 'Ready';
-      case 'FAILED': return 'Failed';
-      default: return status || 'Working';
-    }
-  }
-  function subText(v) {
-    if (v.status === 'THROTTLED' && typeof v.estimatedTimeToStartSeconds === 'number') {
-      return `Starts in ~${Math.max(1, Math.round(v.estimatedTimeToStartSeconds))}s · Seedance can take up to 5 min`;
-    }
-    if (typeof v.progressRatio === 'number' && v.progressRatio > 0) {
-      return `${Math.round(v.progressRatio * 100)}%${v.progressText ? ' · ' + v.progressText : ''}`;
-    }
-    if (v.progressText) return v.progressText;
-    return 'Seedance can take up to 5 min · keep this tab open';
-  }
-
-  setInterval(() => {
-    document.querySelectorAll('.timer[data-created]').forEach(el => {
-      const created = Number(el.dataset.created);
-      if (!Number.isFinite(created)) return;
-      const lastPoll = Number(el.dataset.lastPoll || 0);
-      const pollCount = Number(el.dataset.pollCount || 0);
-      el.textContent = pollText({ createdAt: created, lastPollAt: lastPoll || null, pollCount });
-    });
-  }, 1000);
-
-  async function pollTask(taskId) {
-    const v = videos.get(taskId);
-    if (!v) return;
-    if (v.status === 'SUCCEEDED' || v.status === 'FAILED') return;
+  async function poll() {
+    if (!activeChainId) return;
     try {
-      const res = await fetch(`/api/status?taskId=${encodeURIComponent(taskId)}`);
-      const json = await res.json();
-      v.lastPollAt = Date.now();
-      v.pollCount = (v.pollCount || 0) + 1;
-      if (res.ok) {
-        console.log(`[poll] ${taskId.slice(-12)} → ${json.status} video=${json.videoUrl ? 'YES' : 'no'}`);
-        v.status = json.status || v.status;
-        v.progressRatio = json.progressRatio;
-        v.progressText = json.progressText;
-        v.estimatedTimeToStartSeconds = json.estimatedTimeToStartSeconds;
-        v._raw = json._raw || null;
-        if (json.videoUrl) v.videoUrl = `/api/download?taskId=${encodeURIComponent(taskId)}`;
-        if (json.error) v.error = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
-        v.pollError = null;
-      } else {
-        console.warn(`[poll] ERROR ${res.status}:`, json);
-        v.pollError = json.error || `Status ${res.status}`;
+      const res = await authFetch(`/api/chain/status?chainId=${activeChainId}`);
+      if (res.status === 404) {
+        // Chain expired (server restart)
+        localStorage.removeItem(STORE_KEY);
+        activeChainId = null;
+        render(null);
+        return;
       }
-      saveStore();
-      render();
+      const json = await res.json();
+      render(json);
+      const terminal = ['COMPLETED', 'FAILED', 'STOPPED'].includes(json.currentStatus);
+      if (!terminal) {
+        clearTimeout(pollHandle);
+        pollHandle = setTimeout(poll, 30000);
+      }
     } catch (e) {
-      console.warn('[poll] fetch error', e);
-      v.lastPollAt = Date.now();
-      v.pollCount = (v.pollCount || 0) + 1;
-      v.pollError = e.message;
-      saveStore();
-      render();
-    }
-    if (v.status !== 'SUCCEEDED' && v.status !== 'FAILED') {
-      setTimeout(() => pollTask(taskId), 30000);
+      console.warn('[poll]', e);
+      clearTimeout(pollHandle);
+      pollHandle = setTimeout(poll, 30000);
     }
   }
 
-  function render() {
-    const list = [...videos.values()].sort((a, b) => b.createdAt - a.createdAt);
-    grid.innerHTML = '';
-    empty.style.display = list.length ? 'none' : 'block';
+  function statusLabel(s) {
+    switch (s) {
+      case 'STARTING': return 'Starting';
+      case 'UPLOADING_REFERENCE': return 'Uploading reference frame';
+      case 'CREATING_VIDEO': return 'Submitting to Seedance';
+      case 'GENERATING': return 'Generating video';
+      case 'DOWNLOADING': return 'Downloading clip';
+      case 'EXTRACTING_FRAME': return 'Extracting last frame';
+      case 'COMPLETED': return 'Completed';
+      case 'STOPPED': return 'Stopped';
+      case 'FAILED': return 'Failed';
+      default: return s || 'Working';
+    }
+  }
 
-    let succeeded = 0;
-    for (const v of list) {
-      if (v.status === 'SUCCEEDED') succeeded++;
-      const card = document.createElement('div');
-      card.className = 'card';
+  function fmtDuration(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const r = s % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m ${r}s`;
+  }
+
+  function renderOverview(snap) {
+    if (!snap) { overviewEl.innerHTML = ''; return; }
+    const total = snap.totalPrompts;
+    const done = snap.clips.length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const isWorking = !['COMPLETED', 'FAILED', 'STOPPED'].includes(snap.currentStatus);
+    const elapsed = Date.now() - snap.startedAt;
+    const taskProgress = typeof snap.currentTaskProgress === 'string' ? parseFloat(snap.currentTaskProgress) : snap.currentTaskProgress;
+    const taskPctText = (typeof taskProgress === 'number' && !isNaN(taskProgress) && taskProgress > 0) ? ` · ${Math.round(taskProgress * 100)}%` : '';
+    const clipElapsed = snap.currentClipStartedAt ? fmtDuration(Date.now() - snap.currentClipStartedAt) : '';
+
+    overviewEl.innerHTML = '';
+    const root = document.createElement('div');
+    root.className = 'chain-overview';
+
+    const row = document.createElement('div');
+    row.className = 'row';
+    const left = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'title';
+    if (isWorking) {
+      const dot = document.createElement('span'); dot.className = 'pulse-dot'; title.appendChild(dot);
+    }
+    title.appendChild(document.createTextNode(`${statusLabel(snap.currentStatus)} — clip ${Math.min(snap.currentIndex + 1, total)} of ${total}`));
+    left.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta-line';
+    let metaText = `${done}/${total} clips done · Elapsed ${fmtDuration(elapsed)}`;
+    if (isWorking && snap.currentTaskStatus) {
+      metaText += ` · Task: ${snap.currentTaskStatus}${taskPctText}`;
+      if (clipElapsed) metaText += ` · This clip: ${clipElapsed}`;
+      if (snap.currentPollCount) metaText += ` · ${snap.currentPollCount} polls`;
+    }
+    meta.textContent = metaText;
+    left.appendChild(meta);
+
+    if (snap.error) {
+      const e = document.createElement('div'); e.className = 'err'; e.textContent = 'Error: ' + snap.error;
+      left.appendChild(e);
+    }
+    row.appendChild(left);
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex'; actions.style.gap = '8px';
+    if (isWorking) {
+      const stop = document.createElement('button');
+      stop.className = 'btn-danger';
+      stop.textContent = 'Stop';
+      stop.onclick = async () => {
+        if (!confirm('Stop this chain? In-flight clip will finish, then the chain stops.')) return;
+        stop.disabled = true;
+        try {
+          await authFetch('/api/chain/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chainId: snap.id }),
+          });
+          poll();
+        } catch (e) { alert(e.message); stop.disabled = false; }
+      };
+      actions.appendChild(stop);
+    } else {
+      const newOne = document.createElement('button');
+      newOne.className = 'btn-ghost';
+      newOne.textContent = 'Clear';
+      newOne.onclick = async () => {
+        if (!confirm('Clear this chain from the view? Server-side memory is freed.')) return;
+        try { await authFetch(`/api/chain?chainId=${snap.id}`, { method: 'DELETE' }); } catch {}
+        localStorage.removeItem(STORE_KEY);
+        activeChainId = null;
+        render(null);
+      };
+      actions.appendChild(newOne);
+    }
+    row.appendChild(actions);
+    root.appendChild(row);
+
+    const track = document.createElement('div'); track.className = 'progress-track';
+    const fill = document.createElement('div'); fill.className = 'progress-fill';
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+    root.appendChild(track);
+
+    overviewEl.appendChild(root);
+  }
+
+  function renderGrid(snap) {
+    grid.innerHTML = '';
+    if (!snap) { empty.style.display = 'block'; clipsHeader.textContent = 'Clips'; bulkBtn.disabled = true; return; }
+    const total = snap.totalPrompts;
+    const clips = snap.clips;
+    empty.style.display = (total === 0) ? 'block' : 'none';
+    clipsHeader.textContent = `Clips (${clips.length} / ${total})`;
+    bulkBtn.disabled = clips.length === 0;
+
+    // One card per prompt — completed clips show video, in-flight shows status, queued shows pending
+    for (let i = 0; i < total; i++) {
+      const clip = clips.find(c => c.index === i);
+      const card = document.createElement('div'); card.className = 'card';
 
       let media;
-      if (v.status === 'SUCCEEDED') {
+      if (clip) {
         media = document.createElement('video');
         media.controls = true;
         media.preload = 'metadata';
-        media.src = `/api/download?taskId=${encodeURIComponent(v.taskId)}`;
-        media.onerror = () => {
-          const fallback = document.createElement('div');
-          fallback.className = 'placeholder';
-          const lbl = document.createElement('div'); lbl.className = 'label';
-          lbl.textContent = 'Video URL not yet available';
-          const sub = document.createElement('div'); sub.className = 'sub';
-          sub.textContent = 'Server reports SUCCEEDED but the video file isn\'t reachable yet. Visit /api/debug/' + v.taskId + ' to inspect.';
-          fallback.appendChild(lbl); fallback.appendChild(sub);
-          media.replaceWith(fallback);
-        };
-      } else if (v.status === 'FAILED') {
-        media = document.createElement('div');
-        media.className = 'placeholder';
-        media.textContent = v.error || 'Generation failed.';
+        media.src = `/api/chain/clip?chainId=${snap.id}&index=${i}&_=${getAuthQs()}`;
+        // browsers don't send Authorization on <video src>; we use a query-token workaround below
       } else {
         media = document.createElement('div');
         media.className = 'placeholder';
-
-        const label = document.createElement('div');
-        label.className = 'label';
-        const dot = document.createElement('span'); dot.className = 'pulse-dot';
-        label.appendChild(dot);
-        label.appendChild(document.createTextNode(statusLabel(v.status)));
-        media.appendChild(label);
-
-        const bar = document.createElement('div');
-        bar.className = 'progressbar';
-        const fill = document.createElement('div');
-        fill.className = 'fill';
-        if (typeof v.progressRatio === 'number' && v.progressRatio > 0) {
-          fill.style.width = `${Math.max(3, Math.round(v.progressRatio * 100))}%`;
+        const lbl = document.createElement('div'); lbl.className = 'label';
+        if (i === snap.currentIndex && !['COMPLETED','STOPPED','FAILED'].includes(snap.currentStatus)) {
+          const dot = document.createElement('span'); dot.className = 'pulse-dot'; lbl.appendChild(dot);
+          lbl.appendChild(document.createTextNode(statusLabel(snap.currentStatus)));
+        } else if (snap.currentStatus === 'STOPPED' || snap.currentStatus === 'FAILED') {
+          lbl.textContent = 'Not generated';
         } else {
-          bar.classList.add('indeterminate');
+          lbl.textContent = `Queued (${i + 1} of ${total})`;
         }
-        bar.appendChild(fill);
-        media.appendChild(bar);
-
-        const sub = document.createElement('div');
-        sub.className = 'sub';
-        sub.textContent = v.pollError ? `Poll error: ${v.pollError}` : subText(v);
-        if (v.pollError) sub.style.color = 'var(--err)';
-        media.appendChild(sub);
-
-        const timer = document.createElement('div');
-        timer.className = 'timer';
-        timer.dataset.created = String(v.createdAt);
-        timer.dataset.lastPoll = String(v.lastPollAt || 0);
-        timer.dataset.pollCount = String(v.pollCount || 0);
-        timer.textContent = pollText(v);
-        media.appendChild(timer);
+        media.appendChild(lbl);
       }
       card.appendChild(media);
 
-      const body = document.createElement('div');
-      body.className = 'body';
+      const body = document.createElement('div'); body.className = 'body';
+      const num = document.createElement('span'); num.className = 'clip-num'; num.textContent = `#${i + 1}`;
+      const promptEl = document.createElement('div'); promptEl.className = 'prompt';
+      promptEl.textContent = clip?.prompt || (snap.prompts && snap.prompts[i]) || '';
 
-      const promptEl = document.createElement('div');
-      promptEl.className = 'prompt';
-      promptEl.textContent = v.prompt;
+      const meta = document.createElement('div'); meta.className = 'meta';
+      meta.appendChild(num);
+      const right = document.createElement('span');
+      right.textContent = clip ? `${(clip.sizeBytes / (1024*1024)).toFixed(1)} MB` : '';
+      meta.appendChild(right);
+
       body.appendChild(promptEl);
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const stat = document.createElement('span');
-      stat.className = `status ${v.status}`;
-      stat.textContent = v.status;
-      meta.appendChild(stat);
-      const id = document.createElement('span');
-      id.textContent = v.taskId.slice(-10);
-      meta.appendChild(id);
       body.appendChild(meta);
 
-      const actions = document.createElement('div');
-      actions.className = 'actions';
-      const dl = document.createElement('button');
-      dl.className = 'btn-secondary';
-      dl.textContent = 'Download';
-      dl.disabled = v.status !== 'SUCCEEDED';
-      dl.onclick = () => {
-        const a = document.createElement('a');
-        a.href = `/api/download?taskId=${encodeURIComponent(v.taskId)}`;
-        a.download = `seedance-video.mp4`;
-        document.body.appendChild(a); a.click(); a.remove();
-      };
-      actions.appendChild(dl);
+      if (clip) {
+        const actions = document.createElement('div'); actions.className = 'actions';
+        const dl = document.createElement('button');
+        dl.className = 'btn-secondary'; dl.textContent = 'Download';
+        dl.onclick = async () => {
+          // Download via authFetch → blob → object URL (preserves auth)
+          dl.disabled = true; dl.textContent = 'Downloading…';
+          try {
+            const r = await authFetch(`/api/chain/clip?chainId=${snap.id}&index=${i}`);
+            if (!r.ok) throw new Error('Download failed');
+            const blob = await r.blob();
+            const u = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = u; a.download = `clip-${String(i + 1).padStart(2, '0')}.mp4`;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(u);
+          } catch (e) { alert(e.message); }
+          finally { dl.disabled = false; dl.textContent = 'Download'; }
+        };
+        actions.appendChild(dl);
+        body.appendChild(actions);
+      }
 
-      const dbg = document.createElement('button');
-      dbg.className = 'btn-ghost';
-      dbg.textContent = 'Debug';
-      dbg.onclick = () => {
-        const data = { taskId: v.taskId, status: v.status, pollError: v.pollError || null, pollCount: v.pollCount, rawApiResponse: v._raw || null };
-        const pre = document.createElement('pre');
-        pre.style.cssText = 'max-height:300px;overflow:auto;background:#f1f3f9;padding:8px;border-radius:6px;font-size:11px;white-space:pre-wrap;word-break:break-all;margin:8px 0 0;border:1px solid #dfe3ec;';
-        pre.textContent = JSON.stringify(data, null, 2);
-        const existing = card.querySelector('pre');
-        if (existing) existing.remove(); else card.appendChild(pre);
-      };
-      actions.appendChild(dbg);
-
-      const rm = document.createElement('button');
-      rm.className = 'btn-ghost';
-      rm.textContent = 'Remove';
-      rm.onclick = () => { videos.delete(v.taskId); saveStore(); render(); };
-      actions.appendChild(rm);
-
-      body.appendChild(actions);
       card.appendChild(body);
       grid.appendChild(card);
     }
+  }
 
-    bulkBtn.disabled = succeeded === 0;
-    bulkBtn.textContent = succeeded > 0 ? `Download all (${succeeded}) .zip` : 'Download all (.zip)';
+  // Inline video src can't carry Authorization headers. Two options:
+  //  (a) Make video bytes public for the chain id (insecure)
+  //  (b) Stream via a blob URL (works, but loads the whole clip into memory at once)
+  // We use (b) for inline preview by replacing video.src with a blob URL once metadata is requested.
+  function getAuthQs() { return ''; } // placeholder so existing src= attribute still resolves with auth via fetchVideoBlob below
+
+  async function loadInlineBlobs() {
+    // For each card with a video element whose src points at /api/chain/clip and not yet a blob:
+    document.querySelectorAll('video').forEach(async (v) => {
+      const m = v.src.match(/\/api\/chain\/clip\?chainId=([^&]+)&index=(\d+)/);
+      if (!m) return;
+      if (v.dataset.loaded === '1') return;
+      v.dataset.loaded = '1';
+      try {
+        const r = await authFetch(`/api/chain/clip?chainId=${m[1]}&index=${m[2]}`);
+        if (!r.ok) return;
+        const blob = await r.blob();
+        v.src = URL.createObjectURL(blob);
+      } catch (e) { console.warn('inline blob load', e); }
+    });
+  }
+
+  let _lastSnap = null;
+  function render(snap) {
+    _lastSnap = snap;
+    renderOverview(snap);
+    renderGrid(snap);
+    loadInlineBlobs();
   }
 
   bulkBtn.addEventListener('click', async () => {
-    const ids = [...videos.values()].filter(v => v.status === 'SUCCEEDED').map(v => v.taskId);
-    if (!ids.length) return;
+    if (!activeChainId) return;
     bulkBtn.disabled = true;
     const orig = bulkBtn.textContent;
     bulkBtn.textContent = 'Zipping…';
     try {
-      const res = await fetch('/api/download-bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskIds: ids }),
-      });
-      if (!res.ok) throw new Error('Bulk download failed.');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `seedance-videos-${Date.now()}.zip`;
+      const r = await authFetch(`/api/chain/zip?chainId=${activeChainId}`);
+      if (!r.ok) throw new Error('Zip failed');
+      const blob = await r.blob();
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = u; a.download = `chain-${activeChainId}.zip`;
       document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      bulkBtn.disabled = false;
-      bulkBtn.textContent = orig;
-      render();
-    }
+      URL.revokeObjectURL(u);
+    } catch (e) { alert(e.message); }
+    finally { bulkBtn.disabled = false; bulkBtn.textContent = orig; }
   });
 
-  clearBtn.addEventListener('click', () => {
-    if (!videos.size) return;
-    if (!confirm('Clear all videos from this view? (Generation history will be removed locally; videos remain on Runway.)')) return;
-    videos.clear(); saveStore(); render();
-  });
+  // Live tick for elapsed timers (re-renders overview from the last snapshot once a second)
+  setInterval(() => { if (_lastSnap) renderOverview(_lastSnap); }, 1000);
 
-  loadStore();
-  render();
-  for (const v of videos.values()) {
-    if (v.status !== 'SUCCEEDED' && v.status !== 'FAILED') pollTask(v.taskId);
+  // ── Bootstrap ────────────────────────────────────────────────────
+  function bootstrap() {
+    if (activeChainId) poll();
+    else render(null);
+  }
+
+  if (getAuth()) {
+    hideLogin();
+    bootstrap();
+  } else {
+    showLogin();
   }
 </script>
 </body>
