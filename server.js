@@ -9,15 +9,8 @@ const USEAPI_TOKEN = process.env.USEAPI_TOKEN;
 const RUNWAY_EMAIL = process.env.RUNWAY_EMAIL || '';
 const USEAPI_BASE = 'https://api.useapi.net/v1/runwayml';
 
-const withEmail = (qs = {}) => {
-  const params = new URLSearchParams(qs);
-  if (RUNWAY_EMAIL) params.set('email', RUNWAY_EMAIL);
-  const s = params.toString();
-  return s ? `?${s}` : '';
-};
-
 if (!USEAPI_TOKEN) {
-  console.warn('[warn] USEAPI_TOKEN is not set. Set it in your environment before generating videos.');
+  console.warn('[warn] USEAPI_TOKEN is not set.');
 }
 
 const app = express();
@@ -31,24 +24,29 @@ const upload = multer({
 
 const authHeader = () => ({ Authorization: `Bearer ${USEAPI_TOKEN}` });
 
+// ── useapi.net helpers ──────────────────────────────────────────────
+
+async function apiCall(method, url, opts = {}) {
+  console.log(`[api] ${method} ${url}`);
+  const res = await fetch(url, { method, ...opts, headers: { ...authHeader(), ...opts.headers } });
+  const text = await res.text();
+  let json; try { json = JSON.parse(text); } catch { json = { _raw: text }; }
+  console.log(`[api] ${res.status} ${JSON.stringify(json).slice(0, 500)}`);
+  return { ok: res.ok, status: res.status, json };
+}
+
 async function uploadAsset(buffer, mimetype, name) {
-  const url = `${USEAPI_BASE}/assets/${withEmail({ name })}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { ...authHeader(), 'Content-Type': mimetype },
+  const params = new URLSearchParams({ name });
+  if (RUNWAY_EMAIL) params.set('email', RUNWAY_EMAIL);
+  const { ok, json } = await apiCall('POST', `${USEAPI_BASE}/assets/?${params}`, {
+    headers: { 'Content-Type': mimetype },
     body: buffer,
   });
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) {
-    const msg = json?.error || json?.message || text || `Asset upload failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-  }
+  if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
 
-async function createSeedanceVideo({ assetId, prompt }) {
+async function createVideo(assetId, prompt) {
   const body = {
     model: 'seedance-2',
     text_prompt: prompt,
@@ -60,37 +58,26 @@ async function createSeedanceVideo({ assetId, prompt }) {
     exploreMode: true,
   };
   if (RUNWAY_EMAIL) body.email = RUNWAY_EMAIL;
-  const res = await fetch(`${USEAPI_BASE}/videos/create`, {
-    method: 'POST',
-    headers: { ...authHeader(), 'Content-Type': 'application/json' },
+  const { ok, json } = await apiCall('POST', `${USEAPI_BASE}/videos/create`, {
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) {
-    const msg = json?.error || json?.message || text || `Video create failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-  }
+  if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
 
-async function getTask(taskId) {
-  const emailQs = RUNWAY_EMAIL ? `?email=${encodeURIComponent(RUNWAY_EMAIL)}` : '';
-  const url = `${USEAPI_BASE}/tasks/${taskId}${emailQs}`;
-  console.log(`[getTask] GET ${url}`);
-  const res = await fetch(url, { headers: { ...authHeader() } });
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) {
-    const msg = json?.error || json?.message || text || `Task fetch failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-  }
+async function fetchTask(taskId) {
+  // useapi.net expects taskId as a path segment. Encode it to handle : and @
+  const encoded = encodeURIComponent(taskId);
+  const qs = RUNWAY_EMAIL ? `?email=${encodeURIComponent(RUNWAY_EMAIL)}` : '';
+  const { ok, json } = await apiCall('GET', `${USEAPI_BASE}/tasks/${encoded}${qs}`);
+  if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
 
-function extractTask(payload) {
+// ── Response parsing ────────────────────────────────────────────────
+
+function getTask(payload) {
   if (!payload) return null;
   if (payload.task) return payload.task;
   if (Array.isArray(payload.tasks) && payload.tasks.length) return payload.tasks[0];
@@ -98,168 +85,120 @@ function extractTask(payload) {
   return null;
 }
 
-function findCompositeTaskId(obj) {
-  // useapi composite taskIds look like "user:...-runwayml:...-task:..."
-  if (!obj || typeof obj !== 'object') return null;
-  const check = (v) => typeof v === 'string' && v.includes('-runwayml:') && v.includes('-task:');
-  for (const [, v] of Object.entries(obj)) {
-    if (check(v)) return v;
-  }
-  // check nested .task
-  if (obj.task && typeof obj.task === 'object') {
-    for (const [, v] of Object.entries(obj.task)) {
-      if (check(v)) return v;
+function getCompositeTaskId(obj) {
+  if (!obj) return null;
+  const isComposite = (v) => typeof v === 'string' && v.includes('-runwayml:') && v.includes('-task:');
+  // Check top-level and .task
+  for (const src of [obj, obj?.task]) {
+    if (!src || typeof src !== 'object') continue;
+    for (const v of Object.values(src)) {
+      if (isComposite(v)) return v;
     }
   }
   return null;
 }
 
-function looksLikeUrl(s) {
-  return typeof s === 'string' && /^https?:\/\/\S+/i.test(s);
-}
-function looksLikeImage(s) {
-  return typeof s === 'string' && /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(s);
-}
-function extractVideoUrl(task) {
+function getVideoUrl(task) {
   if (!task) return null;
-
-  // 1) Direct fields seen across Runway / useapi shapes.
-  const directKeys = ['videoUrl', 'videoUri', 'video', 'output', 'outputUrl', 'mp4', 'src'];
-  for (const k of directKeys) {
-    if (looksLikeUrl(task[k]) && !looksLikeImage(task[k])) return task[k];
-  }
-
-  // 2) Artifacts array — strongly preferred for Runway video tasks.
+  // Check artifacts first (Runway's standard shape)
   const arts = Array.isArray(task.artifacts) ? task.artifacts : [];
   for (const a of arts) {
-    if (!a) continue;
-    if (looksLikeUrl(a.url) && !looksLikeImage(a.url)) return a.url;
-    for (const k of directKeys) {
-      if (looksLikeUrl(a[k]) && !looksLikeImage(a[k])) return a[k];
-    }
-    if (Array.isArray(a.videoVersions) && looksLikeUrl(a.videoVersions[0]?.url)) return a.videoVersions[0].url;
+    if (a?.url && typeof a.url === 'string' && a.url.startsWith('http')) return a.url;
   }
-
-  // 3) Deep fallback — first non-image http(s) URL anywhere in the payload.
+  // Fallback: crawl all string values for any http URL that isn't an image
   let found = null;
-  const visit = (node) => {
-    if (found || node == null) return;
-    if (typeof node === 'string') {
-      if (looksLikeUrl(node) && !looksLikeImage(node)) found = node;
-      return;
-    }
-    if (Array.isArray(node)) { for (const v of node) visit(v); return; }
-    if (typeof node === 'object') { for (const k of Object.keys(node)) visit(node[k]); }
+  const isImage = (s) => /\.(png|jpe?g|gif|webp|svg)(\?|#|$)/i.test(s);
+  const walk = (node, depth) => {
+    if (found || !node || depth > 5) return;
+    if (typeof node === 'string') { if (node.startsWith('http') && !isImage(node)) found = node; return; }
+    if (Array.isArray(node)) { for (const v of node) walk(v, depth + 1); return; }
+    if (typeof node === 'object') { for (const v of Object.values(node)) walk(v, depth + 1); }
   };
-  visit(task);
+  walk(task, 0);
   return found;
 }
 
+// ── Routes ──────────────────────────────────────────────────────────
+
 app.post('/api/generate', upload.single('image'), async (req, res) => {
   try {
-    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
-    if (!req.file) return res.status(400).json({ error: 'Reference image is required.' });
+    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'USEAPI_TOKEN not configured.' });
+    if (!req.file) return res.status(400).json({ error: 'Image required.' });
     const prompt = (req.body.prompt || '').toString().trim();
-    if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
+    if (!prompt) return res.status(400).json({ error: 'Prompt required.' });
 
+    // 1. Upload asset
     const assetName = `ref-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const asset = await uploadAsset(req.file.buffer, req.file.mimetype || 'image/png', assetName);
     const assetId = asset.assetId || asset.id;
-    if (!assetId) return res.status(502).json({ error: 'Asset upload returned no assetId.', detail: asset });
+    if (!assetId) return res.status(502).json({ error: 'No assetId returned.', _raw: asset });
 
-    const created = await createSeedanceVideo({ assetId, prompt });
-    console.log('[generate] FULL create response:', JSON.stringify(created));
-    const task = extractTask(created);
-    const compositeId = findCompositeTaskId(created);
-    const taskId = compositeId || task?.taskId || task?.id;
-    if (!taskId) return res.status(502).json({ error: 'Video create returned no taskId.', _rawResponse: created });
-    console.log(`[generate] taskId=${taskId} composite=${!!compositeId}`);
+    // 2. Create video
+    const created = await createVideo(assetId, prompt);
+    const task = getTask(created);
+    const taskId = getCompositeTaskId(created) || task?.taskId || task?.id;
+    if (!taskId) return res.status(502).json({ error: 'No taskId returned.', _raw: created });
 
-    res.json({
-      taskId,
-      status: task?.status || 'PENDING',
-      prompt,
-      _debug: {
-        compositeIdFound: compositeId,
-        taskTaskId: task?.taskId || null,
-        taskId: task?.id || null,
-        chosenTaskId: taskId,
-        rawCreateResponse: created,
-      },
-    });
+    console.log(`[generate] OK taskId=${taskId}`);
+    res.json({ taskId, status: task?.status || 'PENDING', prompt, _raw: created });
   } catch (err) {
-    console.error('[generate]', err);
-    res.status(500).json({ error: err.message || 'Generate failed.' });
-  }
-});
-
-app.get('/api/status/:taskId', async (req, res) => {
-  try {
-    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
-    const payload = await getTask(req.params.taskId);
-    const task = extractTask(payload) || {};
-    const status = task.status || 'PENDING';
-    const videoUrl = extractVideoUrl(task);
-    console.log(`[status] task=${req.params.taskId} status=${status} progress=${task.progressRatio ?? '-'} video=${videoUrl ? 'yes' : 'no'}`);
-    if (status === 'SUCCEEDED' && !videoUrl) {
-      console.warn('[status] SUCCEEDED but no video URL extracted. Raw task keys:', Object.keys(task), 'artifacts:', JSON.stringify(task.artifacts || null).slice(0, 1500));
-    }
-    res.json({
-      taskId: task.taskId || req.params.taskId,
-      status,
-      progressRatio: task.progressRatio ?? null,
-      progressText: task.progressText ?? null,
-      estimatedTimeToStartSeconds: task.estimatedTimeToStartSeconds ?? null,
-      error: task.error || null,
-      videoUrl,
-      _debug: { rawPayload: payload, requestedTaskId: req.params.taskId },
-    });
-  } catch (err) {
-    console.error('[status]', err);
-    res.status(500).json({ error: err.message || 'Status fetch failed.', requestedTaskId: req.params.taskId });
-  }
-});
-
-app.get('/api/debug/:taskId', async (req, res) => {
-  try {
-    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
-    const payload = await getTask(req.params.taskId);
-    res.json({ raw: payload, extractedVideoUrl: extractVideoUrl(extractTask(payload)) });
-  } catch (err) {
+    console.error('[generate] ERROR', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/download/:taskId', async (req, res) => {
+// Using query param to avoid path-encoding issues with composite taskId
+app.get('/api/status', async (req, res) => {
   try {
-    const payload = await getTask(req.params.taskId);
-    const task = extractTask(payload);
-    const url = extractVideoUrl(task);
-    if (!url) return res.status(404).json({ error: 'Video not ready.' });
+    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'USEAPI_TOKEN not configured.' });
+    const taskId = req.query.taskId;
+    if (!taskId) return res.status(400).json({ error: 'taskId query param required.' });
+
+    const payload = await fetchTask(taskId);
+    const task = getTask(payload) || {};
+    const status = task.status || 'UNKNOWN';
+    const videoUrl = getVideoUrl(task);
+
+    console.log(`[status] ${taskId.slice(-12)} → ${status} video=${videoUrl ? 'YES' : 'no'}`);
+    if (status === 'SUCCEEDED' && !videoUrl) {
+      console.warn('[status] SUCCEEDED but no video URL! artifacts:', JSON.stringify(task.artifacts));
+    }
+    res.json({ taskId, status, videoUrl, progressRatio: task.progressRatio ?? null, progressText: task.progressText ?? null, estimatedTimeToStartSeconds: task.estimatedTimeToStartSeconds ?? null, error: task.error || null, _raw: payload });
+  } catch (err) {
+    console.error('[status] ERROR', err);
+    res.status(500).json({ error: err.message, taskId: req.query.taskId });
+  }
+});
+
+app.get('/api/download', async (req, res) => {
+  try {
+    const taskId = req.query.taskId;
+    if (!taskId) return res.status(400).json({ error: 'taskId query param required.' });
+
+    const payload = await fetchTask(taskId);
+    const task = getTask(payload);
+    const url = getVideoUrl(task);
+    if (!url) return res.status(404).json({ error: 'Video not ready.', status: task?.status });
 
     const upstream = await fetch(url);
-    if (!upstream.ok || !upstream.body) {
-      return res.status(502).json({ error: `Upstream fetch failed (${upstream.status}).` });
-    }
-    const filename = `seedance-${req.params.taskId.replace(/[^a-z0-9_-]/gi, '_')}.mp4`;
+    if (!upstream.ok || !upstream.body) return res.status(502).json({ error: `Upstream ${upstream.status}` });
+
+    const safe = taskId.replace(/[^a-z0-9_-]/gi, '_');
     res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="seedance-${safe}.mp4"`);
     const len = upstream.headers.get('content-length');
     if (len) res.setHeader('Content-Length', len);
 
     const reader = upstream.body.getReader();
-    const pump = async () => {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(Buffer.from(value));
-      }
-      res.end();
-    };
-    await pump();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
   } catch (err) {
     console.error('[download]', err);
-    if (!res.headersSent) res.status(500).json({ error: err.message || 'Download failed.' });
+    if (!res.headersSent) res.status(500).json({ error: err.message });
     else res.end();
   }
 });
@@ -271,41 +210,37 @@ app.post('/api/download-bulk', async (req, res) => {
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="seedance-videos-${Date.now()}.zip"`);
-
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', (e) => { console.error('[zip]', e); try { res.end(); } catch {} });
     archive.pipe(res);
 
     for (const taskId of taskIds) {
       try {
-        const payload = await getTask(taskId);
-        const task = extractTask(payload);
-        const url = extractVideoUrl(task);
+        const payload = await fetchTask(taskId);
+        const url = getVideoUrl(getTask(payload));
         if (!url) continue;
         const upstream = await fetch(url);
-        if (!upstream.ok || !upstream.body) continue;
+        if (!upstream.ok) continue;
         const buf = Buffer.from(await upstream.arrayBuffer());
         const safe = String(taskId).replace(/[^a-z0-9_-]/gi, '_');
         archive.append(buf, { name: `seedance-${safe}.mp4` });
       } catch (e) {
-        console.error('[zip-item]', taskId, e.message);
+        console.error('[zip-item]', e.message);
       }
     }
     await archive.finalize();
   } catch (err) {
     console.error('[bulk]', err);
-    if (!res.headersSent) res.status(500).json({ error: err.message || 'Bulk download failed.' });
+    if (!res.headersSent) res.status(500).json({ error: err.message });
     else res.end();
   }
 });
 
 app.get('/api/accounts', async (_req, res) => {
   try {
-    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
-    const r = await fetch(`${USEAPI_BASE}/accounts/`, { headers: { ...authHeader() } });
-    const text = await r.text();
-    let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
-    if (!r.ok) return res.status(r.status).json(json);
+    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'USEAPI_TOKEN not configured.' });
+    const { ok, json, status } = await apiCall('GET', `${USEAPI_BASE}/accounts/`);
+    if (!ok) return res.status(status).json(json);
     const emails = json && typeof json === 'object' ? Object.keys(json) : [];
     res.json({ count: emails.length, emails, pinnedEmail: RUNWAY_EMAIL || null });
   } catch (err) {
@@ -313,8 +248,6 @@ app.get('/api/accounts', async (_req, res) => {
   }
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true, runwayEmailPinned: !!RUNWAY_EMAIL }));
+app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
-  console.log(`Seedance Video Studio listening on :${PORT}`);
-});
+app.listen(PORT, () => console.log(`Seedance Video Studio listening on :${PORT}`));

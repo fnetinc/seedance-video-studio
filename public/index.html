@@ -237,24 +237,33 @@
     if (!v) return;
     if (v.status === 'SUCCEEDED' || v.status === 'FAILED') return;
     try {
-      const res = await fetch(`/api/status/${encodeURIComponent(taskId)}`);
+      const res = await fetch(`/api/status?taskId=${encodeURIComponent(taskId)}`);
       const json = await res.json();
+      v.lastPollAt = Date.now();
+      v.pollCount = (v.pollCount || 0) + 1;
       if (res.ok) {
-        console.log(`[poll] taskId=${taskId} status=${json.status} video=${json.videoUrl ? 'YES' : 'no'}`, json._debug ? json : '');
+        console.log(`[poll] ${taskId.slice(-12)} → ${json.status} video=${json.videoUrl ? 'YES' : 'no'}`);
         v.status = json.status || v.status;
         v.progressRatio = json.progressRatio;
         v.progressText = json.progressText;
         v.estimatedTimeToStartSeconds = json.estimatedTimeToStartSeconds;
-        v.lastPollAt = Date.now();
-        v.pollCount = (v.pollCount || 0) + 1;
-        v._debugStatus = json._debug || null;
-        if (json.videoUrl) v.videoUrl = `/api/download/${encodeURIComponent(taskId)}?inline=1`;
+        v._raw = json._raw || null;
+        if (json.videoUrl) v.videoUrl = `/api/download?taskId=${encodeURIComponent(taskId)}`;
         if (json.error) v.error = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
-        saveStore();
-        render();
+        v.pollError = null;
+      } else {
+        console.warn(`[poll] ERROR ${res.status}:`, json);
+        v.pollError = json.error || `Status ${res.status}`;
       }
+      saveStore();
+      render();
     } catch (e) {
-      console.warn('poll error', e);
+      console.warn('[poll] fetch error', e);
+      v.lastPollAt = Date.now();
+      v.pollCount = (v.pollCount || 0) + 1;
+      v.pollError = e.message;
+      saveStore();
+      render();
     }
     if (v.status !== 'SUCCEEDED' && v.status !== 'FAILED') {
       setTimeout(() => pollTask(taskId), 5000);
@@ -277,7 +286,7 @@
         media = document.createElement('video');
         media.controls = true;
         media.preload = 'metadata';
-        media.src = `/api/download/${encodeURIComponent(v.taskId)}`;
+        media.src = `/api/download?taskId=${encodeURIComponent(v.taskId)}`;
         media.onerror = () => {
           const fallback = document.createElement('div');
           fallback.className = 'placeholder';
@@ -317,7 +326,8 @@
 
         const sub = document.createElement('div');
         sub.className = 'sub';
-        sub.textContent = subText(v);
+        sub.textContent = v.pollError ? `Poll error: ${v.pollError}` : subText(v);
+        if (v.pollError) sub.style.color = 'var(--err)';
         media.appendChild(sub);
 
         const timer = document.createElement('div');
@@ -357,8 +367,8 @@
       dl.disabled = v.status !== 'SUCCEEDED';
       dl.onclick = () => {
         const a = document.createElement('a');
-        a.href = `/api/download/${encodeURIComponent(v.taskId)}`;
-        a.download = `seedance-${v.taskId}.mp4`;
+        a.href = `/api/download?taskId=${encodeURIComponent(v.taskId)}`;
+        a.download = `seedance-video.mp4`;
         document.body.appendChild(a); a.click(); a.remove();
       };
       actions.appendChild(dl);
@@ -367,7 +377,7 @@
       dbg.className = 'btn-ghost';
       dbg.textContent = 'Debug';
       dbg.onclick = () => {
-        const data = { taskId: v.taskId, status: v.status, createDebug: v._debugCreate, statusDebug: v._debugStatus };
+        const data = { taskId: v.taskId, status: v.status, pollError: v.pollError || null, pollCount: v.pollCount, rawApiResponse: v._raw || null };
         const pre = document.createElement('pre');
         pre.style.cssText = 'max-height:300px;overflow:auto;background:#f1f3f9;padding:8px;border-radius:6px;font-size:11px;white-space:pre-wrap;word-break:break-all;margin:8px 0 0;border:1px solid #dfe3ec;';
         pre.textContent = JSON.stringify(data, null, 2);
