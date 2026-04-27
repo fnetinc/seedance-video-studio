@@ -1,0 +1,18 @@
+{
+  "name": "seedance-video-studio",
+  "version": "1.0.0",
+  "description": "Generate 15s 16:9 videos with sound using Seedance 2.0 via useapi.net",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
