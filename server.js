@@ -77,7 +77,8 @@ async function createSeedanceVideo({ assetId, prompt }) {
 
 async function getTask(taskId) {
   const emailQs = RUNWAY_EMAIL ? `?email=${encodeURIComponent(RUNWAY_EMAIL)}` : '';
-  const url = `${USEAPI_BASE}/tasks/${encodeURIComponent(taskId)}${emailQs}`;
+  const url = `${USEAPI_BASE}/tasks/${taskId}${emailQs}`;
+  console.log(`[getTask] GET ${url}`);
   const res = await fetch(url, { headers: { ...authHeader() } });
   const text = await res.text();
   let json;
@@ -94,6 +95,22 @@ function extractTask(payload) {
   if (payload.task) return payload.task;
   if (Array.isArray(payload.tasks) && payload.tasks.length) return payload.tasks[0];
   if (payload.taskId || payload.status) return payload;
+  return null;
+}
+
+function findCompositeTaskId(obj) {
+  // useapi composite taskIds look like "user:...-runwayml:...-task:..."
+  if (!obj || typeof obj !== 'object') return null;
+  const check = (v) => typeof v === 'string' && v.includes('-runwayml:') && v.includes('-task:');
+  for (const [, v] of Object.entries(obj)) {
+    if (check(v)) return v;
+  }
+  // check nested .task
+  if (obj.task && typeof obj.task === 'object') {
+    for (const [, v] of Object.entries(obj.task)) {
+      if (check(v)) return v;
+    }
+  }
   return null;
 }
 
@@ -151,9 +168,11 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
     if (!assetId) return res.status(502).json({ error: 'Asset upload returned no assetId.', detail: asset });
 
     const created = await createSeedanceVideo({ assetId, prompt });
+    console.log('[generate] create response:', JSON.stringify(created).slice(0, 2000));
     const task = extractTask(created);
-    const taskId = task?.taskId || task?.id;
+    const taskId = findCompositeTaskId(created) || task?.taskId || task?.id;
     if (!taskId) return res.status(502).json({ error: 'Video create returned no taskId.', detail: created });
+    console.log(`[generate] using taskId=${taskId} (composite=${taskId.includes('-runwayml:')})`);
 
     res.json({ taskId, status: task?.status || 'PENDING', prompt });
   } catch (err) {
