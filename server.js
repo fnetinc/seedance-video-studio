@@ -76,7 +76,8 @@ async function createSeedanceVideo({ assetId, prompt }) {
 }
 
 async function getTask(taskId) {
-  const url = `${USEAPI_BASE}/tasks/${withEmail({ taskId })}`;
+  const emailQs = RUNWAY_EMAIL ? `?email=${encodeURIComponent(RUNWAY_EMAIL)}` : '';
+  const url = `${USEAPI_BASE}/tasks/${encodeURIComponent(taskId)}${emailQs}`;
   const res = await fetch(url, { headers: { ...authHeader() } });
   const text = await res.text();
   let json;
