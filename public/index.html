@@ -6,16 +6,17 @@
 <title>Seedance Video Studio</title>
 <style>
   :root {
-    --bg: #0b0d12;
-    --panel: #141821;
-    --panel-2: #1b2030;
-    --border: #262c3b;
-    --text: #e8ecf3;
-    --muted: #8b93a7;
-    --accent: #6ea8ff;
-    --accent-2: #8b5cf6;
-    --ok: #34d399;
-    --err: #f87171;
+    --bg: #f6f7fb;
+    --panel: #ffffff;
+    --panel-2: #f1f3f9;
+    --border: #dfe3ec;
+    --text: #1a1f2c;
+    --muted: #5b6478;
+    --accent: #2563eb;
+    --accent-2: #7c3aed;
+    --ok: #047857;
+    --err: #b91c1c;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -25,7 +26,7 @@
   main { max-width: 1200px; margin: 0 auto; padding: 28px 32px 80px; display: grid; grid-template-columns: 380px 1fr; gap: 28px; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
 
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
   .panel h2 { margin: 0 0 14px; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
   label { display: block; font-size: 13px; margin: 12px 0 6px; color: var(--muted); }
   input[type=file], textarea, input[type=text] { width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; }
@@ -44,23 +45,23 @@
   .toolbar .grow { flex: 1; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
-  .card video, .card .placeholder { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
-  .card .placeholder { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; padding: 12px; text-align: center; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+  .card video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
+  .card .placeholder { width: 100%; aspect-ratio: 16/9; background: var(--panel-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; padding: 12px; text-align: center; border-bottom: 1px solid var(--border); }
   .card .body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
   .card .prompt { font-size: 13px; color: var(--text); line-height: 1.4; max-height: 4.2em; overflow: hidden; }
   .card .meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
   .card .actions { display: flex; gap: 6px; }
   .card .actions button { flex: 1; padding: 7px 10px; font-size: 12px; }
 
-  .status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
-  .status.PENDING, .status.RUNNING, .status.THROTTLED { color: var(--accent); border-color: rgba(110,168,255,0.4); }
-  .status.SUCCEEDED { color: var(--ok); border-color: rgba(52,211,153,0.4); }
-  .status.FAILED { color: var(--err); border-color: rgba(248,113,113,0.4); }
+  .status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2); }
+  .status.PENDING, .status.RUNNING, .status.THROTTLED { color: var(--accent); border-color: rgba(37,99,235,0.35); background: rgba(37,99,235,0.08); }
+  .status.SUCCEEDED { color: var(--ok); border-color: rgba(4,120,87,0.35); background: rgba(4,120,87,0.08); }
+  .status.FAILED { color: var(--err); border-color: rgba(185,28,28,0.35); background: rgba(185,28,28,0.08); }
 
   .empty-state { color: var(--muted); padding: 60px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 12px; }
 
-  .spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
+  .spinner { width: 28px; height: 28px; border: 3px solid rgba(15,23,42,0.12); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .err-msg { color: var(--err); font-size: 12px; margin-top: 8px; }
