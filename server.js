@@ -67,10 +67,9 @@ async function createVideo(assetId, prompt) {
 }
 
 async function fetchTask(taskId) {
-  // useapi.net expects taskId as a path segment. Encode it to handle : and @
-  const encoded = encodeURIComponent(taskId);
+  // useapi.net wants the composite taskId unencoded in the path (colons and @ as-is)
   const qs = RUNWAY_EMAIL ? `?email=${encodeURIComponent(RUNWAY_EMAIL)}` : '';
-  const { ok, json } = await apiCall('GET', `${USEAPI_BASE}/tasks/${encoded}${qs}`);
+  const { ok, json } = await apiCall('GET', `${USEAPI_BASE}/tasks/${taskId}${qs}`);
   if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
