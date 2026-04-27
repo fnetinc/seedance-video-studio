@@ -6,7 +6,15 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const USEAPI_TOKEN = process.env.USEAPI_TOKEN;
+const RUNWAY_EMAIL = process.env.RUNWAY_EMAIL || '';
 const USEAPI_BASE = 'https://api.useapi.net/v1/runwayml';
+
+const withEmail = (qs = {}) => {
+  const params = new URLSearchParams(qs);
+  if (RUNWAY_EMAIL) params.set('email', RUNWAY_EMAIL);
+  const s = params.toString();
+  return s ? `?${s}` : '';
+};
 
 if (!USEAPI_TOKEN) {
   console.warn('[warn] USEAPI_TOKEN is not set. Set it in your environment before generating videos.');
@@ -24,7 +32,7 @@ const upload = multer({
 const authHeader = () => ({ Authorization: `Bearer ${USEAPI_TOKEN}` });
 
 async function uploadAsset(buffer, mimetype, name) {
-  const url = `${USEAPI_BASE}/assets/?name=${encodeURIComponent(name)}`;
+  const url = `${USEAPI_BASE}/assets/${withEmail({ name })}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { ...authHeader(), 'Content-Type': mimetype },
@@ -50,6 +58,7 @@ async function createSeedanceVideo({ assetId, prompt }) {
     audio: true,
     imageAssetId1: assetId,
   };
+  if (RUNWAY_EMAIL) body.email = RUNWAY_EMAIL;
   const res = await fetch(`${USEAPI_BASE}/videos/create`, {
     method: 'POST',
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
@@ -66,7 +75,7 @@ async function createSeedanceVideo({ assetId, prompt }) {
 }
 
 async function getTask(taskId) {
-  const url = `${USEAPI_BASE}/tasks/?taskId=${encodeURIComponent(taskId)}`;
+  const url = `${USEAPI_BASE}/tasks/${withEmail({ taskId })}`;
   const res = await fetch(url, { headers: { ...authHeader() } });
   const text = await res.text();
   let json;
@@ -210,7 +219,21 @@ app.post('/api/download-bulk', async (req, res) => {
   }
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
+app.get('/api/accounts', async (_req, res) => {
+  try {
+    if (!USEAPI_TOKEN) return res.status(500).json({ error: 'Server missing USEAPI_TOKEN.' });
+    const r = await fetch(`${USEAPI_BASE}/accounts/`, { headers: { ...authHeader() } });
+    const text = await r.text();
+    let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
+    if (!r.ok) return res.status(r.status).json(json);
+    const emails = json && typeof json === 'object' ? Object.keys(json) : [];
+    res.json({ count: emails.length, emails, pinnedEmail: RUNWAY_EMAIL || null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/healthz', (_req, res) => res.json({ ok: true, runwayEmailPinned: !!RUNWAY_EMAIL }));
 
 app.listen(PORT, () => {
   console.log(`Seedance Video Studio listening on :${PORT}`);

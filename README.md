@@ -13,6 +13,16 @@ Generate 15-second 16:9 videos with sound from a reference image + text prompt u
 - `multer` (in-memory upload), `archiver` (bulk zip)
 - Vanilla HTML/CSS/JS frontend served from `/public`
 
+## Prerequisites
+
+useapi.net brokers Runway access through one or more **Runway accounts you link inside the useapi.net dashboard**. Before this app can generate anything:
+
+1. Sign in at [useapi.net](https://useapi.net) and grab your bearer token.
+2. Link at least one Runway account (`POST /runwayml/accounts/{email}` in the useapi.net dashboard or via API). Confirm via `GET /runwayml/accounts/`.
+3. With **one** linked account, useapi.net auto-selects it. With **multiple**, it load-balances unless you pin one via the `RUNWAY_EMAIL` env var.
+
+Once deployed you can hit `GET /api/accounts` on your own server to confirm which Runway accounts useapi.net sees.
+
 ## Local development
 
 ```bash
@@ -27,7 +37,9 @@ Open http://localhost:3000.
 
 1. Push this repo to GitHub.
 2. In Railway: **New Project → Deploy from GitHub Repo** and pick the repo.
-3. Add an environment variable: `USEAPI_TOKEN = <your token>`.
+3. Add environment variables:
+   - `USEAPI_TOKEN = <your useapi.net bearer token>` (required)
+   - `RUNWAY_EMAIL = <linked Runway account email>` (optional — pin a specific account when multiple are linked)
 4. Railway auto-detects Node and runs `npm start` (also pinned in `railway.json`). The app binds to `process.env.PORT`.
 5. Generate a public domain in the Railway service settings.
 
@@ -39,6 +51,7 @@ Open http://localhost:3000.
 | GET    | `/api/status/:taskId`      | poll status; returns `videoUrl` when `SUCCEEDED`   |
 | GET    | `/api/download/:taskId`    | proxies the MP4 (single-file download / playback)  |
 | POST   | `/api/download-bulk`       | body `{ taskIds: [...] }` → streams a `.zip`       |
+| GET    | `/api/accounts`            | lists linked Runway accounts useapi.net sees       |
 | GET    | `/healthz`                 | health check                                       |
 
 ## Notes
