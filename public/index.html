@@ -266,7 +266,7 @@
       render();
     }
     if (v.status !== 'SUCCEEDED' && v.status !== 'FAILED') {
-      setTimeout(() => pollTask(taskId), 5000);
+      setTimeout(() => pollTask(taskId), 30000);
     }
   }
 
