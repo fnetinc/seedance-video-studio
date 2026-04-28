@@ -78,13 +78,47 @@ async function apiCall(method, url, opts = {}) {
   return { ok: res.ok, status: res.status, json };
 }
 
+// Treat 5xx, 429, network errors, and useapi/Cloudflare HTML error pages as transient.
+function isTransientApiResult(result) {
+  if (!result) return true;
+  if (result.status >= 500) return true;
+  if (result.status === 429) return true;
+  if (result.status === 408) return true;
+  // Cloudflare/useapi error pages come back as { _raw: "error code: 522" } etc.
+  if (result.json?._raw && typeof result.json._raw === 'string' && /error code: \d+/i.test(result.json._raw)) return true;
+  return false;
+}
+
+async function apiCallWithRetry(method, url, opts = {}, label = 'api') {
+  const delaysMs = [10_000, 30_000, 60_000, 120_000, 240_000]; // ~7.5 min total budget
+  let lastResult = null;
+  for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
+    try {
+      const result = await apiCall(method, url, opts);
+      if (result.ok) return result;
+      lastResult = result;
+      if (!isTransientApiResult(result)) return result; // permanent error — surface immediately
+      if (attempt === delaysMs.length) return result;
+      const wait = delaysMs[attempt];
+      console.warn(`[${label}] transient ${result.status}, retry ${attempt + 1}/${delaysMs.length} in ${wait / 1000}s`);
+      await new Promise(r => setTimeout(r, wait));
+    } catch (err) {
+      // Network-level failure (DNS, ECONNRESET, etc.) — retry
+      console.warn(`[${label}] network error: ${err.message}, attempt ${attempt + 1}/${delaysMs.length + 1}`);
+      if (attempt === delaysMs.length) throw err;
+      await new Promise(r => setTimeout(r, delaysMs[attempt]));
+    }
+  }
+  return lastResult;
+}
+
 async function uploadAsset(buffer, mimetype, name) {
   const params = new URLSearchParams({ name });
   if (RUNWAY_EMAIL) params.set('email', RUNWAY_EMAIL);
-  const { ok, json } = await apiCall('POST', `${USEAPI_BASE}/assets/?${params}`, {
+  const { ok, json } = await apiCallWithRetry('POST', `${USEAPI_BASE}/assets/?${params}`, {
     headers: { 'Content-Type': mimetype },
     body: buffer,
-  });
+  }, 'uploadAsset');
   if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
@@ -103,16 +137,16 @@ async function createVideo(assetId, prompt, mode = 'unlimited') {
   // mode: 'credits' omits exploreMode so Runway charges credits as normal
   if (mode === 'unlimited') body.exploreMode = true;
   if (RUNWAY_EMAIL) body.email = RUNWAY_EMAIL;
-  const { ok, json } = await apiCall('POST', `${USEAPI_BASE}/videos/create`, {
+  const { ok, json } = await apiCallWithRetry('POST', `${USEAPI_BASE}/videos/create`, {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, 'createVideo');
   if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
 
 async function fetchTask(taskId) {
-  const { ok, json } = await apiCall('GET', `${USEAPI_BASE}/tasks/${taskId}`);
+  const { ok, json } = await apiCallWithRetry('GET', `${USEAPI_BASE}/tasks/${taskId}`, {}, 'fetchTask');
   if (!ok) throw new Error(json?.error || json?.message || JSON.stringify(json));
   return json;
 }
@@ -336,11 +370,30 @@ async function runChain(chainId) {
         }
       }
 
-      // Download
+      // Download (with retry — CloudFront signed URLs can flake transiently)
       c.currentStatus = 'DOWNLOADING';
-      const upstream = await fetch(videoUrl);
-      if (!upstream.ok) throw new Error(`Clip ${i + 1}: download failed (${upstream.status})`);
-      const videoBuffer = Buffer.from(await upstream.arrayBuffer());
+      let videoBuffer = null;
+      const downloadDelays = [10_000, 30_000, 60_000, 120_000];
+      for (let attempt = 0; attempt <= downloadDelays.length; attempt++) {
+        if (c.stopped) { c.currentStatus = 'STOPPED'; return; }
+        try {
+          const upstream = await fetch(videoUrl);
+          if (upstream.ok) {
+            videoBuffer = Buffer.from(await upstream.arrayBuffer());
+            break;
+          }
+          if (upstream.status < 500 && upstream.status !== 429) {
+            throw new Error(`Clip ${i + 1}: download failed (${upstream.status})`);
+          }
+          if (attempt === downloadDelays.length) throw new Error(`Clip ${i + 1}: download failed (${upstream.status}) after ${attempt + 1} attempts`);
+          console.warn(`[chain ${c.id}] download ${upstream.status}, retry ${attempt + 1}/${downloadDelays.length}`);
+        } catch (e) {
+          if (attempt === downloadDelays.length) throw e;
+          console.warn(`[chain ${c.id}] download error: ${e.message}, retry ${attempt + 1}/${downloadDelays.length}`);
+        }
+        await new Promise(r => setTimeout(r, downloadDelays[attempt]));
+      }
+      if (!videoBuffer) throw new Error(`Clip ${i + 1}: download failed`);
 
       c.clips.push({ index: i, taskId, videoUrl, prompt: c.prompts[i], buffer: videoBuffer });
 
